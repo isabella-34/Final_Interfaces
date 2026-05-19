@@ -112,11 +112,13 @@ if st.session_state.autorizado:
         publicar(TOPIC_VOZ, {"cofre": "ABRIR"})
         st.session_state.cofre_abierto = True
         st.session_state.input_key += 1
+        st.rerun()  # ← ahora SÍ es seguro porque el estado ya cambió arriba
 
     elif comando.lower() == "cierrate":
         publicar(TOPIC_VOZ, {"cofre": "CERRAR"})
         st.session_state.cofre_abierto = False
         st.session_state.input_key += 1
+        st.rerun()  # ← igual aquí
 
 else:
     st.warning("⚠️ Debe reconocerse un dueño primero")
