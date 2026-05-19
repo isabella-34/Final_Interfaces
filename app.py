@@ -5,6 +5,7 @@ from keras.models import load_model
 import paho.mqtt.client as mqtt
 import json
 import platform
+import base64
 
 # =====================================================
 # CONFIG STREAMLIT
@@ -55,6 +56,15 @@ if "input_key" not in st.session_state:
 
 def publicar(topic, mensaje):
     client.publish(topic, json.dumps(mensaje))
+
+# =====================================================
+# FUNCIÓN IMAGEN A BASE64
+# (necesario para incrustar en HTML dentro de Streamlit)
+# =====================================================
+
+def imagen_a_base64(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
 
 # =====================================================
 # RECONOCIMIENTO FACIAL
@@ -112,27 +122,59 @@ if st.session_state.autorizado:
         publicar(TOPIC_VOZ, {"cofre": "ABRIR"})
         st.session_state.cofre_abierto = True
         st.session_state.input_key += 1
-        st.rerun()  # ← ahora SÍ es seguro porque el estado ya cambió arriba
 
     elif comando.lower() == "cierrate":
         publicar(TOPIC_VOZ, {"cofre": "CERRAR"})
         st.session_state.cofre_abierto = False
         st.session_state.input_key += 1
-        st.rerun()  # ← igual aquí
 
 else:
     st.warning("⚠️ Debe reconocerse un dueño primero")
 
 # =====================================================
-# ESTADO VISUAL DEL COFRE (al final, ya ve el estado actualizado)
+# ESTADO VISUAL DEL COFRE — HTML con opacidad
 # =====================================================
 
 st.markdown("---")
 st.subheader("📦 Estado del Cofre")
 
+# Convertir imágenes a base64 para incrustarlas en HTML
+b64_cerrado = imagen_a_base64("cofre_cerrado.png")
+b64_abierto = imagen_a_base64("cofre_abierto.png")
+
+# Opacidad según estado actual
+op_cerrado = 0 if st.session_state.cofre_abierto else 1
+op_abierto = 1 if st.session_state.cofre_abierto else 0
+
+st.components.v1.html(f"""
+    <div style="position: relative; width: 300px; height: 300px;">
+
+        <img
+            src="data:image/png;base64,{b64_cerrado}"
+            style="
+                position: absolute;
+                top: 0; left: 0;
+                width: 300px;
+                opacity: {op_cerrado};
+                transition: opacity 0.5s ease;
+            "
+        />
+
+        <img
+            src="data:image/png;base64,{b64_abierto}"
+            style="
+                position: absolute;
+                top: 0; left: 0;
+                width: 300px;
+                opacity: {op_abierto};
+                transition: opacity 0.5s ease;
+            "
+        />
+
+    </div>
+""", height=320)
+
 if st.session_state.cofre_abierto:
-    st.image("cofre_abierto.png", width=300)
     st.success("📦 Cofre abierto")
 else:
-    st.image("cofre_cerrado.png", width=300)
     st.warning("📦 Cofre cerrado")
