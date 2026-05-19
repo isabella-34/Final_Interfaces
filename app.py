@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
-from PIL import Image as Image, ImageOps as ImagOps
-import cv2
+from PIL import Image
 from keras.models import load_model
 import paho.mqtt.client as mqtt
 import json
@@ -12,9 +11,7 @@ import platform
 # =====================================================
 
 st.set_page_config(page_title="Cofre Inteligente")
-
 st.title("🔐 Cofre Inteligente con IA")
-
 st.write("Python:", platform.python_version())
 
 # =====================================================
@@ -23,7 +20,6 @@ st.write("Python:", platform.python_version())
 
 BROKER = "broker.mqttdashboard.com"
 PUERTO = 1883
-
 TOPIC_ESTADO = "cofre/estado"
 TOPIC_VOZ = "cofre/voz"
 
@@ -41,7 +37,7 @@ with open("labels.txt", "r") as f:
     class_names = f.read().splitlines()
 
 # =====================================================
-# VARIABLES
+# VARIABLES DE ESTADO
 # =====================================================
 
 if "autorizado" not in st.session_state:
@@ -50,16 +46,12 @@ if "autorizado" not in st.session_state:
 if "cofre_abierto" not in st.session_state:
     st.session_state.cofre_abierto = False
 
-# ✅ NUEVO: contador para resetear el text_input
 if "input_key" not in st.session_state:
     st.session_state.input_key = 0
 
-# =====================================================
-# IMÁGENES
-# =====================================================
-
-COFRE_CERRADO = "cofre_cerrado.png"
-COFRE_ABIERTO = "cofre_abierto.png"
+# ✅ Mensaje pendiente para mostrar DESPUÉS de que el estado ya cambió
+if "mensaje_pendiente" not in st.session_state:
+    st.session_state.mensaje_pendiente = None
 
 # =====================================================
 # FUNCIÓN MQTT
@@ -69,17 +61,48 @@ def publicar(topic, mensaje):
     client.publish(topic, json.dumps(mensaje))
 
 # =====================================================
-# ESTADO VISUAL DEL COFRE
+# FASE 1: PROCESAR COMANDO (antes de renderizar)
+# Aquí se cambia el estado y se programa el mensaje,
+# pero NO se muestra nada todavía
 # =====================================================
 
+if st.session_state.autorizado:
+    comando_actual = st.session_state.get(
+        f"comando_{st.session_state.input_key}", ""
+    )
+
+    if comando_actual.lower() == "abrete" and not st.session_state.cofre_abierto:
+        publicar(TOPIC_VOZ, {"cofre": "ABRIR"})
+        st.session_state.cofre_abierto = True
+        st.session_state.mensaje_pendiente = ("success", "📦 Cofre abierto")
+        st.session_state.input_key += 1
+
+    elif comando_actual.lower() == "cierrate" and st.session_state.cofre_abierto:
+        publicar(TOPIC_VOZ, {"cofre": "CERRAR"})
+        st.session_state.cofre_abierto = False
+        st.session_state.mensaje_pendiente = ("warning", "📦 Cofre cerrado")
+        st.session_state.input_key += 1
+
+# =====================================================
+# FASE 2: RENDERIZAR (el estado ya está actualizado)
+# =====================================================
+
+# --- Imagen del cofre (ya refleja el estado correcto) ---
 st.subheader("📦 Estado del Cofre")
 
-# ✅ El placeholder se actualiza correctamente porque
-#    depende del session_state, no del comando
 if st.session_state.cofre_abierto:
-    st.image(COFRE_ABIERTO, width=300)
+    st.image("cofre_abierto.png", width=300)
 else:
-    st.image(COFRE_CERRADO, width=300)
+    st.image("cofre_cerrado.png", width=300)
+
+# --- Mostrar mensaje pendiente si existe ---
+if st.session_state.mensaje_pendiente:
+    tipo, texto = st.session_state.mensaje_pendiente
+    if tipo == "success":
+        st.success(texto)
+    elif tipo == "warning":
+        st.warning(texto)
+    st.session_state.mensaje_pendiente = None  # Limpiar tras mostrar
 
 # =====================================================
 # RECONOCIMIENTO FACIAL
@@ -91,7 +114,6 @@ st.subheader("📷 Reconocimiento Facial")
 img_file_buffer = st.camera_input("Tomar foto")
 
 if img_file_buffer is not None:
-
     image = Image.open(img_file_buffer).convert("RGB")
     image = image.resize((224, 224))
     image_array = np.array(image)
@@ -128,26 +150,10 @@ st.markdown("---")
 st.subheader("🎤 Control del Cofre")
 
 if st.session_state.autorizado:
-
-    # ✅ KEY dinámica: cuando cambia el contador, Streamlit
-    #    crea un widget nuevo con valor vacío, rompiendo el bucle
-    comando = st.text_input(
+    st.text_input(
         "Escribe un comando",
         placeholder="Abrete o Cierrate",
         key=f"comando_{st.session_state.input_key}"
     )
-
-    if comando.lower() == "abrete":
-        publicar(TOPIC_VOZ, {"cofre": "ABRIR"})
-        st.session_state.cofre_abierto = True
-        st.session_state.input_key += 1   # ✅ Resetea el input
-        st.rerun()                         # ✅ Ahora el rerun es seguro
-
-    elif comando.lower() == "cierrate":
-        publicar(TOPIC_VOZ, {"cofre": "CERRAR"})
-        st.session_state.cofre_abierto = False
-        st.session_state.input_key += 1   # ✅ Resetea el input
-        st.rerun()                         # ✅ Ahora el rerun es seguro
-
 else:
     st.warning("⚠️ Debe reconocerse un dueño primero")
