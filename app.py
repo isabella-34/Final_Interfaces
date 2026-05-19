@@ -50,6 +50,10 @@ if "autorizado" not in st.session_state:
 if "cofre_abierto" not in st.session_state:
     st.session_state.cofre_abierto = False
 
+# ✅ NUEVO: contador para resetear el text_input
+if "input_key" not in st.session_state:
+    st.session_state.input_key = 0
+
 # =====================================================
 # IMÁGENES
 # =====================================================
@@ -62,7 +66,6 @@ COFRE_ABIERTO = "cofre_abierto.png"
 # =====================================================
 
 def publicar(topic, mensaje):
-
     client.publish(topic, json.dumps(mensaje))
 
 # =====================================================
@@ -71,6 +74,8 @@ def publicar(topic, mensaje):
 
 st.subheader("📦 Estado del Cofre")
 
+# ✅ El placeholder se actualiza correctamente porque
+#    depende del session_state, no del comando
 if st.session_state.cofre_abierto:
     st.image(COFRE_ABIERTO, width=300)
 else:
@@ -81,7 +86,6 @@ else:
 # =====================================================
 
 st.markdown("---")
-
 st.subheader("📷 Reconocimiento Facial")
 
 img_file_buffer = st.camera_input("Tomar foto")
@@ -89,65 +93,31 @@ img_file_buffer = st.camera_input("Tomar foto")
 if img_file_buffer is not None:
 
     image = Image.open(img_file_buffer).convert("RGB")
-
     image = image.resize((224, 224))
-
     image_array = np.array(image)
+    normalized_image_array = (image_array.astype(np.float32) / 127.0) - 1
 
-    normalized_image_array = (
-        image_array.astype(np.float32) / 127.0
-    ) - 1
-
-    data = np.ndarray(
-        shape=(1, 224, 224, 3),
-        dtype=np.float32
-    )
-
+    data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
     data[0] = normalized_image_array
 
-    # =====================================================
-    # PREDICCIÓN
-    # =====================================================
-
     prediction = model.predict(data)
-
     index = np.argmax(prediction)
-
     class_name = class_names[index]
-
     confidence_score = prediction[0][index]
 
     st.write(f"Clase detectada: {class_name}")
-
     st.write(f"Confianza: {confidence_score:.2f}")
-
-    # =====================================================
-    # DUEÑOS
-    # =====================================================
 
     if (
         ("Dueño 1" in class_name or "Dueño 2" in class_name)
         and confidence_score > 0.85
     ):
-
         st.success("✅ Dueño reconocido")
-
-        publicar(
-            TOPIC_ESTADO,
-            {"estado": "DUENO"}
-        )
-
+        publicar(TOPIC_ESTADO, {"estado": "DUENO"})
         st.session_state.autorizado = True
-
     else:
-
         st.error("🚨 Intruso detectado")
-
-        publicar(
-            TOPIC_ESTADO,
-            {"estado": "INTRUSO"}
-        )
-
+        publicar(TOPIC_ESTADO, {"estado": "INTRUSO"})
         st.session_state.autorizado = False
 
 # =====================================================
@@ -155,50 +125,29 @@ if img_file_buffer is not None:
 # =====================================================
 
 st.markdown("---")
-
 st.subheader("🎤 Control del Cofre")
 
 if st.session_state.autorizado:
 
+    # ✅ KEY dinámica: cuando cambia el contador, Streamlit
+    #    crea un widget nuevo con valor vacío, rompiendo el bucle
     comando = st.text_input(
         "Escribe un comando",
-        placeholder="Abrete o Cierrate"
+        placeholder="Abrete o Cierrate",
+        key=f"comando_{st.session_state.input_key}"
     )
 
-    # =====================================================
-    # ABRIR
-    # =====================================================
-
     if comando.lower() == "abrete":
-
-        publicar(
-            TOPIC_VOZ,
-            {"cofre": "ABRIR"}
-        )
-
+        publicar(TOPIC_VOZ, {"cofre": "ABRIR"})
         st.session_state.cofre_abierto = True
-
-        st.success("📦 Cofre abierto")
-
-        st.rerun()
-
-    # =====================================================
-    # CERRAR
-    # =====================================================
+        st.session_state.input_key += 1   # ✅ Resetea el input
+        st.rerun()                         # ✅ Ahora el rerun es seguro
 
     elif comando.lower() == "cierrate":
-
-        publicar(
-            TOPIC_VOZ,
-            {"cofre": "CERRAR"}
-        )
-
+        publicar(TOPIC_VOZ, {"cofre": "CERRAR"})
         st.session_state.cofre_abierto = False
-
-        st.warning("📦 Cofre cerrado")
-
-        st.rerun()
+        st.session_state.input_key += 1   # ✅ Resetea el input
+        st.rerun()                         # ✅ Ahora el rerun es seguro
 
 else:
-
     st.warning("⚠️ Debe reconocerse un dueño primero")
