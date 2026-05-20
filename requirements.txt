@@ -30,3 +30,6 @@ packaging==23.0
 PyYAML==6.0
 contourpy==1.0.7
 xyzservices==2022.9.0
+
+bokeh==3.3.4
+streamlit-bokeh-events
