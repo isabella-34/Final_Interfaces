@@ -405,231 +405,252 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # =====================================================
-# MAIN LAYOUT — 2 COLUMNS TOP + BOTTOM VOZ
+# MAIN LAYOUT — VERTICAL STACK
 # =====================================================
 
-col_left, col_right = st.columns([1.1, 0.9], gap="medium")
-
 # ─────────────────────────────────────────
-# COL LEFT — MÓDULO 01: RECONOCIMIENTO FACIAL
+# MÓDULO 01 — RECONOCIMIENTO FACIAL
 # ─────────────────────────────────────────
-with col_left:
-    st.markdown("""
-    <div class="hud-panel">
-      <div class="hud-label">módulo 01 — identificación biométrica</div>
-    """, unsafe_allow_html=True)
 
-    st.subheader("📷 Reconocimiento Facial")
+st.markdown("""
+<div class="hud-panel" style="margin-top:0.8rem;">
+  <div class="hud-label">módulo 01 — identificación biométrica</div>
+""", unsafe_allow_html=True)
 
-    img_file_buffer = st.camera_input("ACTIVAR ESCÁNER FACIAL")
+st.subheader("📷 Reconocimiento Facial")
 
-    if img_file_buffer is not None:
-        image = Image.open(img_file_buffer).convert("RGB")
-        image = image.resize((224, 224))
-        image_array = np.array(image)
-        normalized_image_array = (image_array.astype(np.float32) / 127.0) - 1
+img_file_buffer = st.camera_input("ACTIVAR ESCÁNER FACIAL")
 
-        data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
-        data[0] = normalized_image_array
+if img_file_buffer is not None:
+    image = Image.open(img_file_buffer).convert("RGB")
+    image = image.resize((224, 224))
+    image_array = np.array(image)
+    normalized_image_array = (image_array.astype(np.float32) / 127.0) - 1
 
-        prediction = model.predict(data)
-        index = np.argmax(prediction)
-        class_name = class_names[index]
-        confidence_score = prediction[0][index]
+    data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+    data[0] = normalized_image_array
 
-        # Guardar en session_state para mostrar persistente
-        st.session_state.clase_detectada = class_name
-        st.session_state.confianza = f"{confidence_score:.2f}"
+    prediction = model.predict(data)
+    index = np.argmax(prediction)
+    class_name = class_names[index]
+    confidence_score = prediction[0][index]
 
-        if (
-            ("Dueño 1" in class_name or "Dueño 2" in class_name)
-            and confidence_score > 0.85
-        ):
-            st.success("✅ Dueño reconocido — acceso concedido")
-            publicar(TOPIC_ESTADO, {"estado": "DUENO"})
-            st.session_state.autorizado = True
-        else:
-            st.error("🚨 Identidad no autorizada — alerta activada")
-            publicar(TOPIC_ESTADO, {"estado": "INTRUSO"})
-            st.session_state.autorizado = False
+    st.session_state.clase_detectada = class_name
+    st.session_state.confianza = f"{confidence_score:.2f}"
 
-    # Readout de datos de detección (siempre visible)
-    st.markdown(f"""
-    <div style="margin-top:0.6rem;">
-        <div class="data-row">
-            <span class="label">› IDENTIDAD</span>
-            <span class="value">{st.session_state.clase_detectada}</span>
-        </div>
-        <div class="data-row">
-            <span class="label">› CONFIANZA</span>
-            <span class="value">{st.session_state.confianza}</span>
-        </div>
-        <div class="data-row">
-            <span class="label">› ACCESO</span>
-            <span class="value" style="color:{'#00ff88' if st.session_state.autorizado else '#ff2d78'}">
-                {'AUTORIZADO' if st.session_state.autorizado else 'DENEGADO'}
-            </span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)   # cierra hud-panel
-
-# ─────────────────────────────────────────
-# COL RIGHT — MÓDULO 03: ESTADO DEL COFRE
-# ─────────────────────────────────────────
-with col_right:
-    st.markdown("""
-    <div class="hud-panel">
-      <div class="hud-label">módulo 03 — estado del sistema</div>
-    """, unsafe_allow_html=True)
-
-    st.subheader("📦 Estado del Cofre")
-
-    # Badge de estado
-    if st.session_state.cofre_abierto:
-        st.markdown("""
-            <div class='status-badge authorized'>
-                <span class='status-dot'></span>COFRE: ABIERTO
-            </div>
-        """, unsafe_allow_html=True)
+    if (
+        ("Dueño 1" in class_name or "Dueño 2" in class_name)
+        and confidence_score > 0.85
+    ):
+        st.success("✅ Dueño reconocido — acceso concedido")
+        publicar(TOPIC_ESTADO, {"estado": "DUENO"})
+        st.session_state.autorizado = True
     else:
-        st.markdown("""
-            <div class='status-badge locked'>
-                <span class='status-dot'></span>COFRE: CERRADO
-            </div>
-        """, unsafe_allow_html=True)
+        st.error("🚨 Identidad no autorizada — alerta activada")
+        publicar(TOPIC_ESTADO, {"estado": "INTRUSO"})
+        st.session_state.autorizado = False
 
-    b64_cerrado = imagen_a_base64("safe_closed.png")
-    b64_abierto = imagen_a_base64("safe_opened.png")
+# Readout
+st.markdown(f"""
+<div style="margin-top:0.8rem;">
+    <div class="data-row">
+        <span class="label">› IDENTIDAD</span>
+        <span class="value">{st.session_state.clase_detectada}</span>
+    </div>
 
-    op_cerrado = 0 if st.session_state.cofre_abierto else 1
-    op_abierto = 1 if st.session_state.cofre_abierto else 0
+    <div class="data-row">
+        <span class="label">› CONFIANZA</span>
+        <span class="value">{st.session_state.confianza}</span>
+    </div>
 
-    st.components.v1.html(f"""
-        <style>
-            body {{ margin: 0; background: transparent; }}
-            .vault-wrap {{
-                position: relative;
-                width: 240px; height: 240px;
-                margin: 0.4rem auto 0 auto;
-                filter: drop-shadow(0 0 16px rgba(0,245,255,0.32));
-            }}
-            .vault-wrap::before {{
-                content: '';
-                position: absolute;
-                inset: -6px;
-                border: 1px solid rgba(0,245,255,0.18);
-                border-radius: 3px;
-            }}
-            .vault-wrap::after {{
-                content: '';
-                position: absolute;
-                top: -6px; left: -6px;
-                width: 12px; height: 12px;
-                border-top: 2px solid #ff2d78;
-                border-left: 2px solid #ff2d78;
-            }}
-        </style>
-        <div class="vault-wrap">
-            <img src="data:image/png;base64,{b64_cerrado}"
-                style="position:absolute;top:0;left:0;width:240px;
-                       opacity:{op_cerrado};transition:opacity 0.5s ease;"/>
-            <img src="data:image/png;base64,{b64_abierto}"
-                style="position:absolute;top:0;left:0;width:240px;
-                       opacity:{op_abierto};transition:opacity 0.5s ease;"/>
-        </div>
-    """, height=268)
+    <div class="data-row">
+        <span class="label">› ACCESO</span>
+        <span class="value" style="color:{'#00ff88' if st.session_state.autorizado else '#ff2d78'}">
+            {'AUTORIZADO' if st.session_state.autorizado else 'DENEGADO'}
+        </span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-    st.markdown("</div>", unsafe_allow_html=True)   # cierra hud-panel
+st.markdown("</div>", unsafe_allow_html=True)
 
 # =====================================================
-# BOTTOM ROW — MÓDULO 02: CONTROL POR VOZ (full width)
+# MÓDULO 02 — ESTADO DEL COFRE
 # =====================================================
 
 st.markdown("""
-<div class="hud-panel" style="margin-top:0.6rem;">
-  <div class="hud-label">módulo 02 — interfaz de voz</div>
+<div class="hud-panel" style="margin-top:1rem;">
+  <div class="hud-label">módulo 02 — estado del sistema</div>
+""", unsafe_allow_html=True)
+
+st.subheader("📦 Estado del Cofre")
+
+if st.session_state.cofre_abierto:
+    st.markdown("""
+        <div class='status-badge authorized'>
+            <span class='status-dot'></span>COFRE: ABIERTO
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <div class='status-badge locked'>
+            <span class='status-dot'></span>COFRE: CERRADO
+        </div>
+    """, unsafe_allow_html=True)
+
+b64_cerrado = imagen_a_base64("safe_closed.png")
+b64_abierto = imagen_a_base64("safe_opened.png")
+
+op_cerrado = 0 if st.session_state.cofre_abierto else 1
+op_abierto = 1 if st.session_state.cofre_abierto else 0
+
+st.components.v1.html(f"""
+    <style>
+        body {{
+            margin: 0;
+            background: transparent;
+        }}
+
+        .vault-wrap {{
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin: 1rem auto;
+            filter: drop-shadow(0 0 16px rgba(0,245,255,0.32));
+        }}
+
+        .vault-wrap::before {{
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border: 1px solid rgba(0,245,255,0.18);
+            border-radius: 3px;
+        }}
+
+        .vault-wrap::after {{
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            width: 12px;
+            height: 12px;
+            border-top: 2px solid #ff2d78;
+            border-left: 2px solid #ff2d78;
+        }}
+    </style>
+
+    <div class="vault-wrap">
+        <img src="data:image/png;base64,{b64_cerrado}"
+            style="
+                position:absolute;
+                top:0;
+                left:0;
+                width:260px;
+                opacity:{op_cerrado};
+                transition:opacity 0.5s ease;
+            "/>
+
+        <img src="data:image/png;base64,{b64_abierto}"
+            style="
+                position:absolute;
+                top:0;
+                left:0;
+                width:260px;
+                opacity:{op_abierto};
+                transition:opacity 0.5s ease;
+            "/>
+    </div>
+""", height=300)
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# =====================================================
+# MÓDULO 03 — CONTROL POR VOZ
+# =====================================================
+
+st.markdown("""
+<div class="hud-panel" style="margin-top:1rem;">
+  <div class="hud-label">módulo 03 — interfaz de voz</div>
 """, unsafe_allow_html=True)
 
 st.subheader("🎤 Control por Voz del Cofre")
 
 if st.session_state.autorizado:
 
-    col_v1, col_v2, col_v3 = st.columns([1, 1.2, 1], gap="medium")
+    st.markdown("""
+        <div class="voice-instruction">
+            DI <b>ÁBRETE</b> o <b>CIÉRRATE</b> para controlar el cofre
+        </div>
+    """, unsafe_allow_html=True)
 
-    with col_v2:
-        st.markdown("""
-            <div class="voice-instruction">
-                DI <b>ÁBRETE</b> o <b>CIÉRRATE</b> para controlar el cofre
-            </div>
-        """, unsafe_allow_html=True)
+    stt_button = Button(
+        label="◉  INICIAR ESCUCHA",
+        width=260,
+        button_type="success",
+        stylesheets=["""
+            .bk-btn {
+                font-family: 'Orbitron', sans-serif !important;
+                font-size: 11px !important;
+                letter-spacing: 3px !important;
+                text-transform: uppercase;
+                background: transparent !important;
+                color: #00f5ff !important;
+                border: 1px solid #00f5ff !important;
+                border-radius: 2px !important;
+                padding: 10px 20px !important;
+                box-shadow: 0 0 12px rgba(0,245,255,0.28) !important;
+                transition: all 0.2s !important;
+            }
 
-        stt_button = Button(
-            label="◉  INICIAR ESCUCHA",
-            width=220,
-            button_type="success",
-            stylesheets=["""
-                .bk-btn {
-                    font-family: 'Orbitron', sans-serif !important;
-                    font-size: 11px !important;
-                    letter-spacing: 3px !important;
-                    text-transform: uppercase;
-                    background: transparent !important;
-                    color: #00f5ff !important;
-                    border: 1px solid #00f5ff !important;
-                    border-radius: 2px !important;
-                    padding: 10px 20px !important;
-                    box-shadow: 0 0 12px rgba(0,245,255,0.28) !important;
-                    transition: all 0.2s !important;
-                    width: 100%;
-                }
-                .bk-btn:hover {
-                    background: rgba(0,245,255,0.09) !important;
-                    box-shadow: 0 0 22px rgba(0,245,255,0.55) !important;
-                }
-            """]
-        )
+            .bk-btn:hover {
+                background: rgba(0,245,255,0.09) !important;
+                box-shadow: 0 0 22px rgba(0,245,255,0.55) !important;
+            }
+        """]
+    )
 
-        stt_button.js_on_event("button_click", CustomJS(code="""
-            var recognition = new webkitSpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.lang = 'es-ES';
+    stt_button.js_on_event("button_click", CustomJS(code="""
+        var recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'es-ES';
 
-            recognition.onresult = function(e) {
-                var value = "";
-                for (var i = e.resultIndex; i < e.results.length; ++i) {
-                    if (e.results[i].isFinal) {
-                        value += e.results[i][0].transcript;
-                    }
-                }
-                if (value != "") {
-                    document.dispatchEvent(new CustomEvent("GET_TEXT", {detail: value}));
+        recognition.onresult = function(e) {
+            var value = "";
+
+            for (var i = e.resultIndex; i < e.results.length; ++i) {
+                if (e.results[i].isFinal) {
+                    value += e.results[i][0].transcript;
                 }
             }
-            recognition.start();
-        """))
 
-        result = streamlit_bokeh_events(
-            stt_button,
-            events="GET_TEXT",
-            key="listen",
-            refresh_on_update=False,
-            override_height=75,
-            debounce_time=0
-        )
+            if (value != "") {
+                document.dispatchEvent(
+                    new CustomEvent("GET_TEXT", {detail: value})
+                );
+            }
+        }
 
-    # Resultado de voz — ocupa las 3 columnas
+        recognition.start();
+    """))
+
+    result = streamlit_bokeh_events(
+        stt_button,
+        events="GET_TEXT",
+        key="listen",
+        refresh_on_update=False,
+        override_height=75,
+        debounce_time=0
+    )
+
     if result and "GET_TEXT" in result:
+
         texto = result.get("GET_TEXT").strip().lower()
 
-        col_r1, col_r2, col_r3 = st.columns([1, 1.2, 1])
-        with col_r2:
-            st.markdown(
-                f"<div class='voice-detected'>⬡ AUDIO CAPTADO: <i>{texto.upper()}</i></div>",
-                unsafe_allow_html=True
-            )
+        st.markdown(
+            f"<div class='voice-detected'>⬡ AUDIO CAPTADO: <i>{texto.upper()}</i></div>",
+            unsafe_allow_html=True
+        )
 
         comandos_abrir  = ["ábrete", "abrete", "abrir", "abre"]
         comandos_cerrar = ["ciérrate", "cierrate", "cerrar", "cierra"]
@@ -648,6 +669,7 @@ if st.session_state.autorizado:
             st.error(f"❌ Comando no reconocido: '{texto}'")
 
 else:
+
     st.markdown("""
         <div class='status-badge locked' style="margin-left:0;">
             <span class='status-dot'></span>
@@ -655,7 +677,7 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-st.markdown("</div>", unsafe_allow_html=True)   # cierra hud-panel
+st.markdown("</div>", unsafe_allow_html=True)
 
 # =====================================================
 # FOOTER
