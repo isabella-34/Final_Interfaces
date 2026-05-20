@@ -18,10 +18,14 @@ from streamlit_bokeh_events import streamlit_bokeh_events
 st.set_page_config(
     page_title="VAULT//SYSTEM",
     page_icon="🔐",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed"
-)
+    )
 
+.block-container {
+    max-width: 1400px !important;
+    margin: auto;
+    }
 # =====================================================
 # CYBERPUNK CSS — DASHBOARD FULL-SCREEN
 # =====================================================
