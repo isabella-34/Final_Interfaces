@@ -637,8 +637,44 @@ with col3:
         stt_button = Button(
             label="INICIAR COMANDO DE VOZ",
             width=280,
-            button_type="default"
+            height=48,
+            button_type="default",
+            css_classes=["cyber-voice-button"]
         )
+        
+        stt_button.stylesheets = ["""
+        :host {
+            width: 100%;
+        }
+        
+        .cyber-voice-button {
+            width: 100% !important;
+        }
+        
+        .cyber-voice-button .bk-btn {
+            background: linear-gradient(90deg, #081426, #24103a) !important;
+            color: #eaffff !important;
+            border: 1px solid #00e5ff !important;
+            border-radius: 12px !important;
+            box-shadow:
+                0 0 12px rgba(0, 229, 255, 0.55),
+                inset 0 0 12px rgba(255, 0, 220, 0.18) !important;
+            font-family: 'Share Tech Mono', monospace !important;
+            letter-spacing: 1.4px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            height: 44px !important;
+        }
+        
+        .cyber-voice-button .bk-btn:hover {
+            background: linear-gradient(90deg, #151d3f, #3c0f52) !important;
+            border-color: #ff00dc !important;
+            color: #ffffff !important;
+            box-shadow:
+                0 0 16px rgba(255, 0, 220, 0.65),
+                0 0 22px rgba(0, 229, 255, 0.35) !important;
+        }
+        """]
 
         stt_button.js_on_event("button_click", CustomJS(code="""
             var recognition = new webkitSpeechRecognition();
@@ -665,7 +701,7 @@ with col3:
             events="GET_TEXT",
             key="listen",
             refresh_on_update=False,
-            override_height=70,
+            override_height=55,
             debounce_time=0
         )
 
