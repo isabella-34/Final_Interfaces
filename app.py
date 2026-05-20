@@ -35,8 +35,8 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
 :root {
-    --cyan:    #00f5ff;
-    --magenta: #ff2d78;
+    --cyan:    #68a2eb;
+    --magenta: #c231c9;
     --dark:    #080b14;
     --panel:   rgba(8, 11, 20, 0.85);
     --glass:   rgba(0, 245, 255, 0.05);
